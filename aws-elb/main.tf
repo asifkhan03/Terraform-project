@@ -61,3 +61,53 @@ resource "aws_elb" "example" {
         instance_protocol = "http"
     }
 }
+
+
+# Create a launch Configuratin the defines each ec2 instance in the ASG
+
+resource "aws_launch_configuration" "example" {
+    name = "brew-example-launchconfig"
+
+    image_id        = "ami-02d26659fd82cf299"
+    instance_type   = "t2.micro"
+    security_groups = [aws_security_group.instance.id]
+
+    user_data = <<-EOF
+                #!/bin/bash
+                # Create a simple HTML file
+                cat <<EOT > index.html
+                <html>
+                    <body>
+                        <h1 style="font-size:50px;color:blue;">Brew Labs "Asif"</h1>
+                    </body>
+                </html>
+                EOT
+
+# Whenever using a Launch Configuratin with an ASG, use below
+
+    lifecycle {
+        create_before_destroy = true
+    }
+}
+
+# Actual ASG 
+
+resource "aws_autoscaling_group" "example" {
+    name = "brew-example-asg"
+    launch_configuration = "aws_launch_configuration.example.id 
+    availability_zone    = data.aws_availability_zones.all.names
+    
+    min_size = 3
+    max_size = 8
+
+
+    load_balancers      = [aws_elb.example.name]
+    health_check_type   = "ELB"
+
+    tag {
+        key         = "NAME"
+        value       = "BREW"
+        propogate_at_launch = true 
+    }
+}
+
